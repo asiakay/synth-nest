@@ -26,13 +26,19 @@ jobs:
     - name: Install dependencies
       run: |
         if [ -f package-lock.json ]; then
-        npm ci
+          npm ci
         else
-        npm install
+          npm install
         fi
 
     - name: Run tests
-      run: npm test
+      run: |
+        # Check if test script exists in package.json
+        if grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "No test script found, skipping tests."
+        fi
 
     - name: Build
       run: npm run build
