@@ -1,0 +1,88 @@
+# .github/workflows/debug-react.yml
+name: Debug React Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Analyze frontend structure
+      run: |
+        echo "=== Analyzing frontend directory ==="
+        
+        if [ ! -d "frontend" ]; then
+          echo "❌ ERROR: No 'frontend' directory found!"
+          exit 1
+        fi
+        
+        echo "Frontend exists. Contents:"
+        ls -la frontend/
+        
+        echo ""
+        echo "=== Package files ==="
+        ls -la frontend/package*.json 2>/dev/null || echo "No package files"
+        
+        echo ""
+        echo "=== Node modules ==="
+        ls -la frontend/node_modules/ 2>/dev/null || echo "No node_modules"
+        
+        echo ""
+        echo "=== Source files ==="
+        ls -la frontend/src/ 2>/dev/null || echo "No src directory"
+        
+        echo ""
+        echo "=== Config files ==="
+        ls -la frontend/vite.config.* 2>/dev/null || echo "No vite config"
+        ls -la frontend/*.config.* 2>/dev/null || echo "No other configs"
+    
+    - name: Check package.json
+      working-directory: ./frontend
+      run: |
+        echo "=== package.json content ==="
+        if [ -f "package.json" ]; then
+          cat package.json
+        else
+          echo "❌ No package.json found!"
+          exit 1
+        fi
+        
+        echo ""
+        echo "=== Scripts in package.json ==="
+        npm run 2>/dev/null || echo "Cannot read scripts"
+    
+    - name: Check Node.js version compatibility
+      run: |
+        echo "=== Node.js version check ==="
+        node --version
+        npm --version
+    
+    - name: Install dependencies with debug
+      working-directory: ./frontend
+      run: |
+        echo "=== Installing dependencies ==="
+        npm install --verbose 2>&1 | tail -50 || echo "Installation had issues"
+    
+    - name: Try to build with error capture
+      working-directory: ./frontend
+      run: |
+        echo "=== Trying to build ==="
+        
+        # Capture both stdout and stderr
+        if npm run build 2>&1; then
+          echo "✅ Build succeeded!"
+          echo "Build output:"
+          ls -la dist/
+        else
+          echo "❌ Build failed!"
+          echo "Last 100 lines of error:"
+          npm run build 2>&1 | tail -100
+          exit 1
+        fi
