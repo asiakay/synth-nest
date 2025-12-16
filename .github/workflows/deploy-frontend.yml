@@ -21,6 +21,9 @@ jobs:
       with:
         node-version: '20'
 
+    - name: Debug - List files
+      run: ls -la
+
     - name: Check for package-lock.json
       id: check-lock
       run: |
