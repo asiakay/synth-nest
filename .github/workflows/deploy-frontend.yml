@@ -5,60 +5,40 @@ on:
     branches: [ "main" ]
     paths:
       - 'frontend/**'
-      - '.github/workflows/deploy-frontend.yml'
-
-env:
-  NODE_VERSION: '20'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: ${{ env.NODE_VERSION }}
+        node-version: '20'
 
-    # Check if frontend directory exists and has package.json
-    - name: Check frontend structure
-      id: check_frontend
+    - name: Check for package-lock.json
+      id: check-lock
       run: |
-        if [ -f "frontend/package.json" ]; then
-          echo "Frontend already exists with package.json"
-          echo "exists=true" >> $GITHUB_OUTPUT
+        if [ -f package-lock.json ]; then
+          echo "lock_exists=true" >> $GITHUB_OUTPUT
         else
-          echo "Frontend does not exist or has no package.json, will create"
-          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "lock_exists=false" >> $GITHUB_OUTPUT
         fi
-
-    # If frontend doesn't exist, create it
-    - name: Create frontend if missing
-      if: steps.check_frontend.outputs.exists == 'false'
-      run: |
-        # Create frontend directory
-        mkdir -p frontend
-        cd frontend
-        # Create a basic Vite React app
-        npx create-vite@latest . --template react --force
-        # Install Tone.js
-        npm install tone
 
     - name: Install dependencies
-      working-directory: ./frontend
-      run: |
-        # If there's a package-lock.json, use npm ci, else use npm install
-        if [ -f "package-lock.json" ]; then
-          npm ci
-        else
-          npm install
-        fi
+      if: steps.check-lock.outputs.lock_exists == 'true'
+      run: npm ci
+
+    - name: Install dependencies (no lock)
+      if: steps.check-lock.outputs.lock_exists == 'false'
+      run: npm install
 
     - name: Build
-      working-directory: ./frontend
       run: npm run build
 
     - name: Deploy to GitHub Pages
