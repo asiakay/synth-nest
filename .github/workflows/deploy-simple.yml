@@ -1,0 +1,101 @@
+# .github/workflows/deploy-simple.yml
+name: Deploy Simple
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Create HTML file (no build needed)
+      run: |
+        mkdir -p dist
+        cat > dist/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Control System Simulator</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+            <style>
+                body { font-family: Arial; padding: 20px; text-align: center; }
+                .container { max-width: 600px; margin: 0 auto; }
+                button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+                .visual { height: 100px; background: #007bff; margin: 20px 0; transition: width 0.1s; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🎛️ Control System Audio Simulator</h1>
+                <p>This is deployed via GitHub Actions!</p>
+                
+                <div>
+                    <button onclick="playTone()">Play Tone</button>
+                    <button onclick="stopTone()">Stop Tone</button>
+                </div>
+                
+                <div id="visual" class="visual" style="width: 50%"></div>
+                
+                <div id="status">Ready</div>
+                
+                <script>
+                    let synth = null;
+                    
+                    function playTone() {
+                        if (!synth) {
+                            synth = new Tone.Synth().toDestination();
+                        }
+                        Tone.start();
+                        synth.triggerAttack("C4");
+                        document.getElementById('status').innerHTML = 'Playing C4 (261.63 Hz)';
+                        
+                        // Animate
+                        let width = 50;
+                        const interval = setInterval(() => {
+                            width = width === 100 ? 50 : 100;
+                            document.getElementById('visual').style.width = width + '%';
+                        }, 500);
+                        
+                        window.animationInterval = interval;
+                    }
+                    
+                    function stopTone() {
+                        if (synth) {
+                            synth.triggerRelease();
+                        }
+                        document.getElementById('status').innerHTML = 'Stopped';
+                        if (window.animationInterval) {
+                            clearInterval(window.animationInterval);
+                        }
+                    }
+                </script>
+            </div>
+        </body>
+        </html>
+        EOF
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./dist
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
